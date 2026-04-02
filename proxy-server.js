@@ -1,3 +1,17 @@
+/**
+ * PEDIBOLA - Proxy Server
+ * Versão: v0.1 Beta
+ * Data: 30 Março 2025
+ * 
+ * CHANGELOG v0.1 Beta:
+ * - Abordagem profissional com tratamentos específicos por site
+ * - A Bola: tratamento mínimo (preserva funcionamento)
+ * - O Jogo: CSS agressivo + JS custom (remove ads, fix scroll)
+ * - Record: reescrita de links + navegação interna
+ * - Sites espanhóis: reescrita de links + navegação interna
+ * - Suporte para ?url= parameter para navegação
+ */
+
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
@@ -269,9 +283,66 @@ app.get('/proxy/:site', async (req, res) => {
 app.get('/', (req, res) => {
     res.send(`
         <html>
-            <body style="font-family: Arial; text-align: center; padding: 50px;">
-                <h1>✅ PEDIBOLA Proxy Server</h1>
-                <p>Servidor ativo!</p>
+            <head>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        text-align: center;
+                        padding: 50px;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                    }
+                    .container {
+                        background: white;
+                        color: #2c3e50;
+                        padding: 40px;
+                        border-radius: 15px;
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                        max-width: 600px;
+                        margin: 0 auto;
+                    }
+                    h1 { margin: 0 0 10px 0; color: #27ae60; }
+                    .version { 
+                        display: inline-block;
+                        background: #e74c3c;
+                        color: white;
+                        padding: 5px 15px;
+                        border-radius: 15px;
+                        font-size: 14px;
+                        margin: 10px 0 20px 0;
+                    }
+                    .status { color: #27ae60; font-weight: 600; }
+                    .sites { 
+                        text-align: left;
+                        margin-top: 20px;
+                        padding: 20px;
+                        background: #f8f9fa;
+                        border-radius: 8px;
+                    }
+                    .site-item { 
+                        padding: 8px 0;
+                        border-bottom: 1px solid #dee2e6;
+                    }
+                    .site-item:last-child { border-bottom: none; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>✅ PEDIBOLA Proxy Server</h1>
+                    <div class="version">v0.1 Beta</div>
+                    <p class="status">Servidor ativo e funcionando!</p>
+                    <p style="font-size: 12px; color: #7f8c8d;">Última atualização: 30 Março 2025</p>
+                    
+                    <div class="sites">
+                        <strong>Sites Disponíveis:</strong>
+                        <div class="site-item">🇵🇹 A Bola (tratamento: mínimo)</div>
+                        <div class="site-item">🇵🇹 O Jogo (tratamento: agressivo)</div>
+                        <div class="site-item">🇵🇹 Record (tratamento: médio)</div>
+                        <div class="site-item">🇪🇸 Marca (tratamento: médio)</div>
+                        <div class="site-item">🇪🇸 Mundo Deportivo (tratamento: médio)</div>
+                        <div class="site-item">🇪🇸 AS (tratamento: médio)</div>
+                    </div>
+                </div>
             </body>
         </html>
     `);
