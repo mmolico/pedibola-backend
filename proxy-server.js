@@ -1,15 +1,17 @@
 /**
  * PEDIBOLA - Proxy Server
- * Versão: v0.1 Beta
- * Data: 30 Março 2025
+ * Versão: v0.2 Beta
+ * Data: 2 Abril 2025
+ * 
+ * CHANGELOG v0.2 Beta:
+ * - Record: Links navegam normalmente dentro do iframe (fix)
+ * - Sites ES: Links abrem em nova aba (target="_blank")
+ * - Simplificação para resolver "connection refused"
  * 
  * CHANGELOG v0.1 Beta:
  * - Abordagem profissional com tratamentos específicos por site
- * - A Bola: tratamento mínimo (preserva funcionamento)
- * - O Jogo: CSS agressivo + JS custom (remove ads, fix scroll)
- * - Record: reescrita de links + navegação interna
- * - Sites espanhóis: reescrita de links + navegação interna
- * - Suporte para ?url= parameter para navegação
+ * - A Bola: tratamento mínimo
+ * - O Jogo: CSS agressivo + JS custom
  */
 
 const express = require('express');
@@ -95,7 +97,7 @@ app.get('/proxy/:site', async (req, res) => {
         }
 
         // ═══════════════════════════════════════════════════════════
-        // O JOGO - TRATAMENTO ESPECÍFICO PARA PUBLICIDADE E CONTEÚDO
+        // O JOGO - TRATAMENTO SUPER AGRESSIVO v0.2
         // ═══════════════════════════════════════════════════════════
         if (site === 'ojogo') {
             // Links internos passam pelo proxy
@@ -107,72 +109,189 @@ app.get('/proxy/:site', async (req, res) => {
             });
 
             const css = `
-                <style id="pedibola-ojogo">
+                <style id="pedibola-ojogo-v2">
+                    /* SUPER AGRESSIVO - Garantir scroll funciona */
                     html, body {
                         overflow-y: auto !important;
+                        overflow-x: hidden !important;
                         scroll-behavior: auto !important;
+                        position: static !important;
+                        height: auto !important;
+                        min-height: 100vh !important;
                     }
                     
-                    /* REMOVER PUBLICIDADE ESPECÍFICA DO O JOGO */
-                    .ad-container,
-                    .advertisement,
-                    [class*="publicidade"],
-                    [id*="publicidade"],
-                    [class*="ad-top"],
-                    [id*="ad-top"],
-                    .header-ad,
-                    .sticky-ad,
-                    iframe[src*="doubleclick"],
-                    iframe[src*="googlesyndication"],
-                    div[data-ad-slot] {
-                        display: none !important;
-                        height: 0 !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                    }
-                    
-                    /* Prevenir sticky headers que bloqueiam */
+                    /* REMOVER TUDO que é sticky/fixed - MUITO AGRESSIVO */
                     * {
                         position: relative !important;
                     }
                     
-                    header, .header {
+                    header, .header, nav, .nav, 
+                    [class*="header"], [id*="header"],
+                    [class*="nav"], [id*="nav"],
+                    [class*="sticky"], [id*="sticky"],
+                    [class*="fixed"], [id*="fixed"],
+                    [class*="top"], [class*="menu"] {
                         position: relative !important;
                         top: auto !important;
+                        left: auto !important;
+                        transform: none !important;
+                    }
+                    
+                    /* REMOVER PUBLICIDADE AGRESSIVAMENTE */
+                    .ad-container,
+                    .advertisement, 
+                    .publicidade,
+                    [class*="publicidade"],
+                    [id*="publicidade"],
+                    [class*="ad-"],
+                    [id*="ad-"],
+                    [class*="ads"],
+                    [id*="ads"],
+                    [data-ad],
+                    iframe[src*="doubleclick"],
+                    iframe[src*="googlesyndication"],
+                    iframe[src*="ad"],
+                    div[data-ad-slot],
+                    ins[class*="adsbygoogle"] {
+                        display: none !important;
+                        height: 0 !important;
+                        width: 0 !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        visibility: hidden !important;
+                    }
+                    
+                    /* FORÇAR CONTEÚDO APARECER */
+                    article, .article,
+                    [class*="article"],
+                    [class*="news"],
+                    [class*="noticia"],
+                    [class*="content"],
+                    .main, main {
+                        display: block !important;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                        height: auto !important;
+                        max-height: none !important;
+                    }
+                    
+                    /* LAZY LOADING - Forçar mostrar */
+                    img[loading="lazy"],
+                    img[data-src],
+                    img[data-lazy-src] {
+                        display: block !important;
+                        opacity: 1 !important;
+                    }
+                    
+                    /* Remover overlays */
+                    [class*="overlay"],
+                    [class*="modal"],
+                    [class*="popup"] {
+                        display: none !important;
                     }
                 </style>
             `;
 
             const js = `
-                <script id="pedibola-ojogo-fix">
+                <script id="pedibola-ojogo-v2-fix">
                     (function() {
-                        // Prevenir scroll automático
-                        let userScrolled = false;
+                        console.log('PEDIBOLA v0.2: O Jogo SUPER aggressive mode');
                         
-                        window.addEventListener('wheel', () => { userScrolled = true; }, { passive: true });
-                        window.addEventListener('touchmove', () => { userScrolled = true; }, { passive: true });
+                        // PREVENIR SCROLL AUTOMÁTICO - MUITO AGRESSIVO
+                        let userHasScrolled = false;
+                        let scrollBlocked = false;
                         
+                        // Detectar scroll do utilizador
+                        window.addEventListener('wheel', () => { 
+                            userHasScrolled = true; 
+                            scrollBlocked = false;
+                        }, { passive: true });
+                        
+                        window.addEventListener('touchmove', () => { 
+                            userHasScrolled = true; 
+                            scrollBlocked = false;
+                        }, { passive: true });
+                        
+                        // BLOQUEAR window.scrollTo completamente nos primeiros 3 segundos
+                        scrollBlocked = true;
                         const origScrollTo = window.scrollTo;
+                        const origScroll = window.scroll;
+                        
                         window.scrollTo = function(...args) {
-                            if (userScrolled) origScrollTo.apply(this, args);
+                            if (!scrollBlocked && userHasScrolled) {
+                                origScrollTo.apply(this, args);
+                            }
                         };
                         
-                        // Forçar carregamento de conteúdo lazy
+                        window.scroll = window.scrollTo;
+                        
+                        // Bloquear scrollIntoView
+                        const origScrollIntoView = Element.prototype.scrollIntoView;
+                        Element.prototype.scrollIntoView = function(...args) {
+                            if (userHasScrolled) {
+                                origScrollIntoView.apply(this, args);
+                            }
+                        };
+                        
+                        // Após 3 segundos, libera scroll
+                        setTimeout(() => {
+                            scrollBlocked = false;
+                            userHasScrolled = true;
+                        }, 3000);
+                        
+                        // FORÇAR CARREGAMENTO DE LAZY IMAGES
+                        function forceLazyLoad() {
+                            document.querySelectorAll('img[loading="lazy"], img[data-src], img[data-lazy-src]').forEach(img => {
+                                if (img.dataset.src) {
+                                    img.src = img.dataset.src;
+                                }
+                                if (img.dataset.lazySrc) {
+                                    img.src = img.dataset.lazySrc;
+                                }
+                                img.loading = 'eager';
+                            });
+                        }
+                        
+                        // REMOVER ELEMENTOS PROBLEMÁTICOS
+                        function removeProblematicElements() {
+                            // Remover sticky/fixed elements
+                            document.querySelectorAll('[style*="position: fixed"], [style*="position: sticky"]').forEach(el => {
+                                el.style.position = 'relative';
+                            });
+                            
+                            // Remover overlays
+                            document.querySelectorAll('[class*="overlay"], [class*="modal"], [class*="popup"]').forEach(el => {
+                                if (el.style.position === 'fixed' || el.style.position === 'absolute') {
+                                    el.remove();
+                                }
+                            });
+                        }
+                        
+                        // Executar quando carregar
                         window.addEventListener('load', () => {
-                            userScrolled = true;
+                            forceLazyLoad();
+                            removeProblematicElements();
                             
-                            // Trigger lazy loading
-                            window.dispatchEvent(new Event('scroll'));
-                            
-                            // Remover overlays problemáticos
+                            // Repeat após 1 segundo
                             setTimeout(() => {
-                                document.querySelectorAll('[class*="overlay"], [class*="modal"]').forEach(el => {
-                                    if (el.style.position === 'fixed') el.remove();
-                                });
+                                forceLazyLoad();
+                                removeProblematicElements();
                             }, 1000);
+                            
+                            // E mais uma vez após 2 segundos
+                            setTimeout(() => {
+                                forceLazyLoad();
+                                removeProblematicElements();
+                            }, 2000);
                         });
                         
-                        console.log('PEDIBOLA: O Jogo optimized');
+                        // Também executar imediatamente
+                        setTimeout(() => {
+                            forceLazyLoad();
+                            removeProblematicElements();
+                        }, 100);
+                        
+                        console.log('PEDIBOLA v0.2: O Jogo fixes applied');
                     })();
                 </script>
             `;
@@ -182,17 +301,10 @@ app.get('/proxy/:site', async (req, res) => {
         }
 
         // ═══════════════════════════════════════════════════════════
-        // RECORD - INTERCEPTAÇÃO DE LINKS
+        // RECORD - Links normais (navegação dentro iframe)
         // ═══════════════════════════════════════════════════════════
         if (site === 'record') {
-            // Links internos passam pelo proxy
-            html = html.replace(/href="\/([^"]*)"(?![^<]*\.css)/g, (match, path) => {
-                if (path.includes('.css') || path.includes('.js')) {
-                    return `href="${baseUrl.origin}/${path}"`;
-                }
-                return `href="/proxy/record?url=${encodeURIComponent('/' + path)}"`;
-            });
-
+            // NÃO reescrever links - deixar navegação normal
             const css = `
                 <style id="pedibola-record">
                     html, body { overflow-y: auto !important; }
@@ -204,16 +316,11 @@ app.get('/proxy/:site', async (req, res) => {
         }
 
         // ═══════════════════════════════════════════════════════════
-        // SITES ESPANHÓIS - INTERCEPTAÇÃO DE LINKS
+        // SITES ESPANHÓIS - Abrir links em nova aba
         // ═══════════════════════════════════════════════════════════
         if (site === 'marca' || site === 'mundodeportivo' || site === 'as') {
-            // Links internos passam pelo proxy
-            html = html.replace(/href="\/([^"]*)"(?![^<]*\.css)/g, (match, path) => {
-                if (path.includes('.css') || path.includes('.js')) {
-                    return `href="${baseUrl.origin}/${path}"`;
-                }
-                return `href="/proxy/${site}?url=${encodeURIComponent('/' + path)}"`;
-            });
+            // Adicionar target="_blank" a TODOS os links
+            html = html.replace(/<a /g, '<a target="_blank" ');
 
             const css = `
                 <style id="pedibola-es">
