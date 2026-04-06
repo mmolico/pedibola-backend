@@ -1,17 +1,17 @@
 /**
  * PEDIBOLA - Proxy Server
- * Versão: v0.2 Beta
+ * Versão: v0.2.1 Beta
  * Data: 2 Abril 2025
  * 
- * CHANGELOG v0.2 Beta:
- * - Record: Links navegam normalmente dentro do iframe (fix)
+ * CHANGELOG v0.2.1 Beta:
+ * - Record: CORRIGIDO - links passam pelo proxy (navegação interna funciona)
  * - Sites ES: Links abrem em nova aba (target="_blank")
- * - Simplificação para resolver "connection refused"
+ * 
+ * CHANGELOG v0.2 Beta:
+ * - Tentativa Record navegação normal (não funcionou)
  * 
  * CHANGELOG v0.1 Beta:
- * - Abordagem profissional com tratamentos específicos por site
- * - A Bola: tratamento mínimo
- * - O Jogo: CSS agressivo + JS custom
+ * - Versão inicial
  */
 
 const express = require('express');
@@ -301,10 +301,17 @@ app.get('/proxy/:site', async (req, res) => {
         }
 
         // ═══════════════════════════════════════════════════════════
-        // RECORD - Links normais (navegação dentro iframe)
+        // RECORD - Links passam pelo proxy (navegação interna)
         // ═══════════════════════════════════════════════════════════
         if (site === 'record') {
-            // NÃO reescrever links - deixar navegação normal
+            // Links internos passam pelo proxy
+            html = html.replace(/href="\/([^"]*)"(?![^<]*\.css)/g, (match, path) => {
+                if (path.includes('.css') || path.includes('.js')) {
+                    return `href="${baseUrl.origin}/${path}"`;
+                }
+                return `href="/proxy/record?url=${encodeURIComponent('/' + path)}"`;
+            });
+
             const css = `
                 <style id="pedibola-record">
                     html, body { overflow-y: auto !important; }
