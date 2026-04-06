@@ -1,17 +1,13 @@
 /**
  * PEDIBOLA - Proxy Server
- * Versão: v0.2.1 Beta
+ * Versão: v0.2.3 Beta
  * Data: 2 Abril 2025
  * 
- * CHANGELOG v0.2.1 Beta:
- * - Record: CORRIGIDO - links passam pelo proxy (navegação interna funciona)
- * - Sites ES: Links abrem em nova aba (target="_blank")
+ * CHANGELOG v0.2.3 Beta:
+ * - FIX: A Bola - bloqueado refresh automático (meta + JS)
  * 
- * CHANGELOG v0.2 Beta:
- * - Tentativa Record navegação normal (não funcionou)
- * 
- * CHANGELOG v0.1 Beta:
- * - Versão inicial
+ * CHANGELOG v0.2.2 Beta:
+ * - Record + Sites ES com target="_blank"
  */
 
 const express = require('express');
@@ -84,16 +80,36 @@ app.get('/proxy/:site', async (req, res) => {
         html = html.replace('<head>', `<head><base href="${targetUrl}/" target="_self">`);
 
         // ═══════════════════════════════════════════════════════════
-        // A BOLA - MÍNIMO (JÁ FUNCIONA BEM!)
+        // A BOLA - Bloquear refresh automático
         // ═══════════════════════════════════════════════════════════
         if (site === 'abola') {
-            // CSS mínimo
+            // Remover meta refresh
+            html = html.replace(/<meta[^>]*http-equiv=["']?refresh["']?[^>]*>/gi, '');
+            
             const css = `
                 <style id="pedibola-abola">
                     html, body { overflow-y: auto !important; }
                 </style>
             `;
+            
+            const js = `
+                <script id="pedibola-abola-norefresh">
+                    // Bloquear qualquer tentativa de refresh via JavaScript
+                    window.addEventListener('beforeunload', function(e) {
+                        // Não faz nada - permite navegação normal
+                    });
+                    
+                    // Bloquear location.reload()
+                    const originalReload = location.reload;
+                    location.reload = function() {
+                        console.log('PEDIBOLA: Refresh bloqueado');
+                        // Não faz reload
+                    };
+                </script>
+            `;
+            
             html = html.replace('</head>', `${css}</head>`);
+            html = html.replace('</body>', `${js}</body>`);
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -301,16 +317,11 @@ app.get('/proxy/:site', async (req, res) => {
         }
 
         // ═══════════════════════════════════════════════════════════
-        // RECORD - Links passam pelo proxy (navegação interna)
+        // RECORD - Abrir links em nova aba (mesma solução sites ES)
         // ═══════════════════════════════════════════════════════════
         if (site === 'record') {
-            // Links internos passam pelo proxy
-            html = html.replace(/href="\/([^"]*)"(?![^<]*\.css)/g, (match, path) => {
-                if (path.includes('.css') || path.includes('.js')) {
-                    return `href="${baseUrl.origin}/${path}"`;
-                }
-                return `href="/proxy/record?url=${encodeURIComponent('/' + path)}"`;
-            });
+            // Adicionar target="_blank" a TODOS os links
+            html = html.replace(/<a /g, '<a target="_blank" ');
 
             const css = `
                 <style id="pedibola-record">
